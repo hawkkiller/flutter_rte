@@ -29,6 +29,10 @@ The RTE should support selection and cursor manipulation, such as selecting text
 block widgets.
 It should support selection of multiple blocks, as well as multiple inline widgets.
 
+### Popover
+
+It should be possible to show a popover when a user selects text or block widgets.
+
 ## Command System
 
 Every action in the RTE should be represented as a command. This allows developers to create custom commands and
@@ -42,3 +46,5 @@ The RTE should support undo and redo functionality, allowing users to undo and r
 ## Collaboration
 
 The RTE should support collaboration features, such as real-time editing, presence indicators, and conflict resolution.
+
+
