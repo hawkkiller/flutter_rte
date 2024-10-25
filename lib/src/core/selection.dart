@@ -88,6 +88,14 @@ class NodePoint {
     return true;
   }
 
+  bool isBefore(NodePoint other) {
+    return NodeSelection.comparePoints(this, other) < 0;
+  }
+
+  bool isAfter(NodePoint other) {
+    return NodeSelection.comparePoints(this, other) > 0;
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
