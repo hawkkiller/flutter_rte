@@ -1,152 +1,181 @@
 # Design Overview
 
-This section outlines the design of the project, including its architecture, components, and implementation details. If the **features document** answers the question _"What should the project do?"_, the **design document** addresses _"How should it be done?"_
+This document outlines the architectural design and implementation details of our rich text editor project. While the features documentation answers "What should the project do?", this design document addresses "How should it be implemented?"
 
-**Note: This is a work in progress and may be subject to change.**
+## Core Concepts
 
----
+### Terminology
 
-## Terminology
-
-- **Node**: A mutable representation of content in the editor. It serves as the foundation upon which the actual content is rendered.
-- **Document**: A collection of nodes that collectively represent the editor's content.
-- **NodeRenderer**: A class responsible for rendering a node into a widget. Every node should have an associated renderer.
-- **Selection**: A collection of nodes representing the current selection in the document. It tracks which part of the document the user is working with.
-- **FlutterRTE** (Rich Text Editor, or RTE): The primary widget that represents the rich text editor.
-
----
+| Term | Definition |
+|------|------------|
+| Node | The fundamental building block of the editor that represents content in a mutable form. |
+| Document | A hierarchical collection of nodes that forms the complete editor content. |
+| NodeRenderer | A specialized class that transforms a node into a visible widget. |
+| Selection | A representation of the user's current focus within the document, tracking both cursor position and text selections. |
+| FlutterRTE | The main widget that encapsulates the rich text editor functionality. |
 
 ## Architecture
 
-### Nodes
+### 1. Node System
 
-Nodes form the core structure of the document by creating a tree-like hierarchy that represents the editor's content.
-Each node in the tree has a specific type (e.g., text, paragraph) and a set of attributes (e.g., bold, italic).
+Nodes are the foundational elements that create a tree-structured representation of the editor's content. Each node:
+- Has a unique identifier
+- Contains specific content type (text, paragraph, etc.)
+- Maintains attributes (bold, italic, etc.)
+- Supports mutation operations
 
-#### Tree Structure Example:
+#### Example: Node Tree Structure
 
-For the following HTML content:
-
+Consider this HTML:
 ```html
 <p>Hello, <b>wo<i>r</i>ld</b></p>
 ```
 
-The tree structure would look like this:
-
+Its corresponding node tree:
 ```
 DocumentNode (id: 1)
-  └─ ParagraphNode (id: 2)
-      └─ TextNode (id: 3) { text: "Hello, " }
-      └─ TextNode (id: 4) { text: "wo", bold: true }
-      └─ TextNode (id: 5) { text: "r", bold: true, italic: true }
-      └─ TextNode (id: 6) { text: "ld", bold: true }
+├─ ParagraphNode (id: 2)
+   ├─ TextNode (id: 3) { text: "Hello, " }
+   ├─ TextNode (id: 4) { text: "wo", bold: true }
+   ├─ TextNode (id: 5) { text: "r", bold: true, italic: true }
+   └─ TextNode (id: 6) { text: "ld", bold: true }
 ```
 
-#### Characteristics of Nodes:
-- **Mutability**: Nodes are mutable and can be updated in response to user interactions.
-  For instance, when the user types a character, the corresponding text node is updated with the new character.
-  When a style is applied (e.g., bold or italic), the node's attributes are updated to reflect this.
-- **Uniqueness**: Each node has a unique identifier within the document, allowing the system to reference, find, and update specific nodes within the tree.
-- **DocumentNode**: This node acts as the root of the tree and manages:
-  - The **current selection**
-  - **Notifications** about document changes (e.g., content updates, style changes)
+#### Node Characteristics
 
----
+1. **Mutability**
+   - Nodes can be modified in response to user actions
+   - Supports real-time content updates
+   - Enables dynamic style modifications
 
-### Selection
+2. **Identity**
+   - Each node maintains a unique identifier
+   - Enables precise node targeting and updates
+   - Facilitates efficient tree traversal
 
-Selections allow users to highlight or focus on specific parts of the document. The selection is defined by two key points:
-- **Anchor**: The starting point of the selection.
-- **Focus**: The endpoint of the selection.
+3. **Document Management**
+   - The DocumentNode serves as the root
+   - Manages selection state
+   - Broadcasts change notifications
+   - Coordinates updates across the tree
 
-A selection can be:
-- **Collapsed**: When the anchor and focus are the same point, indicating a single cursor position.
-- **Non-collapsed**: When the anchor and focus differ, indicating a range of selected text.
+### 2. Selection System
 
-#### Example: Simple Selection
+The selection system tracks user interaction points within the document through two key components:
+- **Anchor**: The selection's starting point
+- **Focus**: The selection's ending point
 
-Consider the text `Hello, world`, with the selection from "world" (`[` is the anchor and `]` is the focus):
+#### Selection States
 
+1. **Collapsed Selection**
+   - Anchor and focus points are identical
+   - Represents cursor position
+   - Example: `Hello, world|` (where `|` is the cursor)
+
+2. **Range Selection**
+   - Anchor and focus points differ
+   - Represents highlighted text
+   - Can span multiple nodes
+
+#### Selection Examples
+
+**Simple Selection**
 ```
-Hello, [wo]rld
-```
-
-**Document Structure**:
-
-```
+Text: Hello, [wo]rld
+Structure:
 DocumentNode (id: 1)
-  └─ ParagraphNode (id: 2, index: 0)
-      └─ TextNode (id: 3, index: 0) { text: "Hello, world" }
-```
+└─ ParagraphNode (id: 2, index: 0)
+   └─ TextNode (id: 3, index: 0) { text: "Hello, world" }
 
-**Selection**:
-
-```
-anchor: { path: [0, 0], offset: 6 }
-focus: { path: [0, 0], offset: 8 }
-```
-
-#### Example: Complex Selection Across Paragraphs
-
-For the following HTML content, where the selection spans across two paragraphs:
-
-```html
-[<p>Hello, <b>wo<i>r</i>ld</b></p><br><p>Second paragraph</p>]
-```
-
-**Document Structure**:
-
-```
-DocumentNode (id: 1)
-  └─ ParagraphNode (id: 2, index: 0)
-      └─ TextNode (id: 3, index: 0) { text: "Hello, " }
-      └─ TextNode (id: 4, index: 1) { text: "wo", bold: true }
-      └─ TextNode (id: 5, index: 2) { text: "r", bold: true, italic: true }
-      └─ TextNode (id: 6, index: 3) { text: "ld", bold: true }
-  └─ LineBreakNode (id: 7, index: 1)
-  └─ ParagraphNode (id: 8, index: 2)
-      └─ TextNode (id: 9, index: 0) { text: "Second paragraph" }
-```
-
-**Selection**:
-
-```
-anchor: { path: [0, 0], offset: 0 }
-focus: { path: [2, 0], offset: 16 }
-```
-
----
-
-### Node Renderer
-
-Each node has a corresponding **NodeRenderer**, which transforms the node's data into a widget that can be displayed on the screen. 
-
-#### Responsibilities of NodeRenderers:
-
-- **Render content**: The renderer listens for changes in its associated node and updates the widget accordingly.
-- **Handle selections**: Each renderer must handle selections, ensuring that the selected range is highlighted or visually indicated when it intersects with the node.
-- **React to document changes**: NodeRenderers have access to the document and can react to changes like selection updates or style changes.
-  
-Renderers are typically implemented using **RenderObjectWidget** and **RenderObject** classes.
-
----
-
-### Commands
-
-Each user action in the editor (e.g., typing, styling text) is represented by a **Command**.
-Commands encapsulate the logic necessary to perform or undo an action on the document.
-
-#### Command Interface:
-
-```dart
-abstract interface class Command {
-  void execute(Document document);
-  void undo(Document document);
+Selection:
+{
+  anchor: { path: [0, 0], offset: 6 },
+  focus: { path: [0, 0], offset: 8 }
 }
 ```
 
-#### Example Flow:
-1. **User Action**: The user types a character.
-2. **Command Creation**: A command is generated by the DocumentRenderer to represent this action.
-3. **Command Execution**: The command is executed on the document, updating the relevant node (e.g., appending the new character to a TextNode).
-4. **Undo**: If needed, the command can also be undone, reverting the change to the document.
+**Complex Cross-Paragraph Selection**
+```
+Structure:
+DocumentNode (id: 1)
+├─ ParagraphNode (id: 2, index: 0)
+│  ├─ TextNode (id: 3, index: 0) { text: "Hello, " }
+│  ├─ TextNode (id: 4, index: 1) { text: "wo", bold: true }
+│  ├─ TextNode (id: 5, index: 2) { text: "r", bold: true, italic: true }
+│  └─ TextNode (id: 6, index: 3) { text: "ld", bold: true }
+├─ LineBreakNode (id: 7, index: 1)
+└─ ParagraphNode (id: 8, index: 2)
+   └─ TextNode (id: 9, index: 0) { text: "Second paragraph" }
+
+Selection:
+{
+  anchor: { path: [0, 0], offset: 0 },
+  focus: { path: [2, 0], offset: 16 }
+}
+```
+
+### 3. Rendering System
+
+The NodeRenderer system transforms the logical node structure into visible widgets.
+
+#### Key Responsibilities
+
+1. **Content Rendering**
+   - Converts node data to widgets
+   - Maintains visual consistency
+   - Updates in response to node changes
+
+2. **Selection Handling**
+   - Highlights selected content
+   - Manages cursor visualization
+   - Handles selection interactions
+
+3. **Change Management**
+   - Listens for document updates
+   - Responds to style changes
+   - Updates visual representation
+
+#### Implementation Details
+
+- Built on Flutter's RenderObjectWidget system
+- Provides efficient rendering pipeline
+- Supports custom widget implementations
+- Handles complex text layouts
+
+## Performance Considerations
+
+1. **Tree Operations**
+   - Optimize node traversal
+   - Minimize tree restructuring
+   - Cache frequently accessed nodes
+
+2. **Rendering Pipeline**
+   - Implement efficient update mechanisms
+   - Use lazy rendering where possible
+   - Minimize widget rebuilds
+
+3. **Selection Management**
+   - Optimize range calculations
+   - Cache selection state
+   - Batch selection updates
+
+## Future Considerations
+
+1. **Extensibility**
+   - Plugin system for custom nodes
+   - Customizable rendering pipeline
+   - External format support
+
+2. **Optimization**
+   - Advanced caching strategies
+   - Rendering performance improvements
+   - Memory usage optimization
+
+3. **Features**
+   - Collaborative editing support
+   - Undo/redo system
+   - Custom styling system
+
+---
+
+**Note**: This design document is subject to updates as the project evolves. All implementation details should be validated against the current codebase.
