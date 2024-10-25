@@ -40,7 +40,7 @@ void main() => group(
               document.toJson(),
               {
                 'type': 'document',
-                'id': '1',
+                'id': 'root',
                 'children': [
                   {
                     'type': 'paragraph',
@@ -52,6 +52,30 @@ void main() => group(
                   },
                 ],
               },
+            );
+          },
+        );
+        test(
+          'finds correct path to the root',
+          () {
+            final document = RTEDocumentNode(
+              children: [
+                RTEParagraphNode(
+                  id: '2',
+                  children: [
+                    RTETextNode(id: '3', text: 'Hello, '),
+                    RTETextNode(id: '4', text: 'world!'),
+                  ],
+                ),
+              ],
+            );
+
+            final node = document.children.first.children.last;
+
+            expect(node.id, equals('4'));
+            expect(
+              node.getPathToRoot(),
+              equals([0, 1]),
             );
           },
         );

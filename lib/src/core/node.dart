@@ -4,8 +4,12 @@ abstract class RTENode {
     required this.id,
     required this.type,
     this.parent,
-    List<RTENode>? children,
-  }) : children = children ?? [];
+    List<RTENode> children = const [],
+  }) : children = List.of(children) {
+    for (final child in children) {
+      adoptChildWithoutAddingToList(child);
+    }
+  }
 
   /// Unique identifier for the node
   final String id;
@@ -28,12 +32,22 @@ abstract class RTENode {
   /// Check if this node can contain other nodes
   bool get canContainChildren => true;
 
-  List<RTENode> children;
+  final List<RTENode> children;
 
   /// Insert a child node at specified index
   void insertChild(RTENode child, int index) {
+    adoptChildWithoutAddingToList(child);
+
     children.insert(index, child);
-    child.parent = this;
+  }
+
+  /// Become the parent of a node, without adding it to children
+  void adoptChildWithoutAddingToList(RTENode node) {
+    if (node.parent != null) {
+      node.parent!.removeChild(node);
+    }
+
+    node.parent = this;
   }
 
   /// Remove a child node
@@ -76,11 +90,11 @@ abstract class RTENode {
     RTENode node = this;
 
     while (node.parent != null) {
-      final parent = node.parent!;
-      final index = parent.children.indexWhere((child) => child.id == node.id);
-
+      final index = node.parent!.children.indexWhere(
+        (child) => child.id == node.id,
+      );
       path.insert(0, index);
-      node = parent;
+      node = node.parent!;
     }
 
     return path;
@@ -127,9 +141,13 @@ class RTEDocumentNode extends RTENode {
 class RTEParagraphNode extends RTENode {
   RTEParagraphNode({
     required super.id,
-    List<RTETextNode>? children,
-  })  : children = children ?? [],
-        super(type: 'paragraph');
+    List<RTETextNode> children = const [],
+  })  : children = List.of(children),
+        super(type: 'paragraph') {
+    for (final child in children) {
+      adoptChildWithoutAddingToList(child);
+    }
+  }
 
   @override
   int get length => children.fold(0, (sum, child) => sum + child.length);
