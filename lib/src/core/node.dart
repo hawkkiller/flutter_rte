@@ -4,7 +4,8 @@ abstract class RTENode {
     required this.id,
     required this.type,
     this.parent,
-  });
+    List<RTENode>? children,
+  }) : children = children ?? [];
 
   /// Unique identifier for the node
   final String id;
@@ -26,18 +27,6 @@ abstract class RTENode {
 
   /// Check if this node can contain other nodes
   bool get canContainChildren => true;
-
-  /// Convert node to JSON for serialization
-  Map<String, Object?> toJson();
-}
-
-abstract class RTEElementNode extends RTENode {
-  RTEElementNode({
-    required super.id,
-    required super.type,
-    super.parent,
-    List<RTENode>? children,
-  }) : children = children ?? [];
 
   List<RTENode> children;
 
@@ -63,13 +52,7 @@ abstract class RTEElementNode extends RTENode {
 
     if (path[0] >= children.length) return null;
 
-    final child = children[path[0]];
-
-    if (child is RTEElementNode) {
-      return child.getNodeAtPath(path.sublist(1));
-    }
-
-    return null;
+    return children[path[0]].getNodeAtPath(path.sublist(1));
   }
 
   /// Get path to descendant node
@@ -79,24 +62,36 @@ abstract class RTEElementNode extends RTENode {
         return [i];
       }
 
-      final child = children[i];
-
-      if (child is RTEElementNode) {
-        final path = child.getPathToDescendant(descendant);
-        if (path != null) {
-          return [i, ...path];
-        }
-
-        continue;
+      final childPath = children[i].getPathToDescendant(descendant);
+      if (childPath != null) {
+        return [i, ...childPath];
       }
     }
 
     return null;
   }
+
+  List<int> getPathToRoot() {
+    final path = <int>[];
+    RTENode node = this;
+
+    while (node.parent != null) {
+      final parent = node.parent!;
+      final index = parent.children.indexWhere((child) => child.id == node.id);
+
+      path.insert(0, index);
+      node = parent;
+    }
+
+    return path;
+  }
+
+  /// Convert node to JSON for serialization
+  Map<String, Object?> toJson();
 }
 
 /// Root document node
-class RTEDocumentNode extends RTEElementNode {
+class RTEDocumentNode extends RTENode {
   RTEDocumentNode({
     super.children,
   }) : super(type: 'document', id: 'root');
@@ -129,11 +124,12 @@ class RTEDocumentNode extends RTEElementNode {
 }
 
 /// Paragraph node containing text content
-class RTEParagraphNode extends RTEElementNode {
+class RTEParagraphNode extends RTENode {
   RTEParagraphNode({
     required super.id,
-    super.children,
-  }) : super(type: 'paragraph');
+    List<RTETextNode>? children,
+  })  : children = children ?? [],
+        super(type: 'paragraph');
 
   @override
   int get length => children.fold(0, (sum, child) => sum + child.length);
@@ -142,10 +138,14 @@ class RTEParagraphNode extends RTEElementNode {
   String toPlainText() => children.map((child) => child.toPlainText()).join('');
 
   @override
+  // ignore: overridden_fields
+  final List<RTETextNode> children;
+
+  @override
   RTEParagraphNode clone({
     String? id,
     RTENode? parent,
-    List<RTENode>? children,
+    List<RTETextNode>? children,
   }) {
     return RTEParagraphNode(
       id: id ?? this.id,
@@ -161,15 +161,37 @@ class RTEParagraphNode extends RTEElementNode {
       };
 }
 
+class TextFormatRTE {
+  const TextFormatRTE({
+    this.bold = false,
+    this.italic = false,
+    this.underline = false,
+    this.strikethrough = false,
+    this.subscript = false,
+    this.superscript = false,
+  });
+
+  final bool bold;
+  final bool italic;
+  final bool underline;
+  final bool strikethrough;
+  final bool subscript;
+  final bool superscript;
+}
+
 /// Text node containing plain text content
 class RTETextNode extends RTENode {
   RTETextNode({
     required super.id,
     required this.text,
+    this.format = const TextFormatRTE(),
   }) : super(type: 'text');
 
   /// Text content
   String text;
+
+  /// Text format
+  TextFormatRTE format;
 
   @override
   bool get canContainChildren => false;

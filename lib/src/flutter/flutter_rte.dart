@@ -42,10 +42,16 @@ class _FlutterRteState extends State<FlutterRte> {
         for (final factory in widget.rendererFactories) factory.nodeType: factory,
       };
 
+  NodeSelection? _selection = const NodeSelection(
+    NodePoint(path: [1, 1], offset: 0),
+    NodePoint(path: [1, 18], offset: 3),
+  );
+
   @override
   Widget build(BuildContext context) {
     CustomScrollView;
     EditableText;
+    RenderViewport;
 
     return ValueListenableBuilder(
       valueListenable: widget.controller,
@@ -55,7 +61,10 @@ class _FlutterRteState extends State<FlutterRte> {
           children: [
             for (final node in value.children)
               if (_rendererFactoriesMap.containsKey(node.type))
-                _rendererFactoriesMap[node.type]!.createNodeRenderer(node)
+                _rendererFactoriesMap[node.type]!.createNodeRenderer(
+                  node,
+                  selection: _selection,
+                )
               else
                 Placeholder(child: Text('Unsupported node type: ${node.type}'))
           ],

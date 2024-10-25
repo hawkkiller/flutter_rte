@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter_rte/flutter_rte.dart';
 import 'package:flutter_rte/src/utils/equality.dart';
 
 /// {@template node_selection}
@@ -67,6 +68,25 @@ class NodePoint {
   ///
   /// For example, if the node is a text node, this would be the character offset.
   final int offset;
+
+  /// Returns true if this point is inside the given node.
+  bool isInsideNode(RTENode node) {
+    final pathToNode = node.getPathToRoot();
+
+    // If the path is longer than the node's path, it can't be inside the node
+    if (pathToNode.length < path.length) {
+      return false;
+    }
+
+    // Check if the first n elements of the path are the same
+    for (var i = 0; i < path.length; i++) {
+      if (path[i] != pathToNode[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 
   @override
   bool operator ==(Object other) {

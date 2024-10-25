@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_rte/flutter_rte.dart';
 
@@ -30,6 +31,7 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
         ],
       ),
+      RTEParagraphNode(id: 'linebreak'),
       RTEParagraphNode(
         id: 'paragraph2',
         children: [
@@ -38,6 +40,9 @@ class _EditorScreenState extends State<EditorScreen> {
             (index) => RTETextNode(
               id: 'text$index',
               text: 'Text $index',
+              format: TextFormatRTE(
+                bold: index % 2 == 0,
+              ),
             ),
           ),
         ],
@@ -45,14 +50,17 @@ class _EditorScreenState extends State<EditorScreen> {
     ]),
   );
 
-  /// The node renderer factories.
-  final rendererFactories = <NodeRendererFactory>{
-    ParagraphNodeRendererFactory(),
-  };
-
   @override
-  Widget build(BuildContext context) => FlutterRte(
-        controller: controller,
-        rendererFactories: rendererFactories,
-      );
+  Widget build(BuildContext context) {
+    final rendererFactories = <NodeRendererFactory>{
+      ParagraphNodeRendererFactory(
+        textStyle: Theme.of(context).textTheme.bodyLarge,
+      ),
+    };
+
+    return FlutterRte(
+      controller: controller,
+      rendererFactories: rendererFactories,
+    );
+  }
 }
