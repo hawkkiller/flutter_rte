@@ -129,7 +129,9 @@ final class ParagraphNodeRenderObject extends NodeRenderObject<RTEParagraphNode>
     if (localTextSelection == null) return;
 
     // Get all the text boxes that overlap with the selection
-    final selectionPoints = _textPainter.getBoxesForSelection(localTextSelection);
+    final selectionPoints = _textPainter.getBoxesForSelection(
+      localTextSelection,
+    );
 
     // Create a paint object for the selection highlight
     final paint = Paint()

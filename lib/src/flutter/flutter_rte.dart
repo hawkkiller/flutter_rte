@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/src/gestures/hit_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_rte/flutter_rte.dart';
+import 'package:flutter_rte/src/flutter/selection_gesture_builder.dart';
 
 /// {@template rich_text_editor_controller}
 /// Controller for the RichTextEditor widget.
@@ -36,14 +37,20 @@ class FlutterRte extends StatefulWidget {
   final Set<NodeRendererFactory> rendererFactories;
 
   @override
-  State<FlutterRte> createState() => _FlutterRteState();
+  State<FlutterRte> createState() => FlutterRteState();
 }
 
-class _FlutterRteState extends State<FlutterRte> {
+class FlutterRteState extends State<FlutterRte> {
   /// The renderer factories map.
   Map<String, NodeRendererFactory> get _rendererFactoriesMap => {
         for (final factory in widget.rendererFactories) factory.nodeType: factory,
       };
+
+  final _globalKey = GlobalKey<FlutterRteState>();
+
+  late final _selectionGestureBuilder = SelectionGestureBuilder(
+    flutterRteRenderKey: _globalKey,
+  );
 
   NodeSelection? _selection = const NodeSelection(
     NodePoint(path: [1], offset: 0),
@@ -57,31 +64,28 @@ class _FlutterRteState extends State<FlutterRte> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    CustomScrollView;
-    EditableText;
-    RenderViewport;
-
-    return ValueListenableBuilder(
-      valueListenable: widget.controller,
-      builder: (context, value, _) => Scrollable(
-        viewportBuilder: (BuildContext context, ViewportOffset position) => _FlutterRteWidget(
-          offset: position,
-          onSelectionChanged: _handleSelectionChanged,
-          children: [
-            for (final node in value.children)
-              if (_rendererFactoriesMap.containsKey(node.type))
-                _rendererFactoriesMap[node.type]!.createNodeRenderer(
-                  node,
-                  selection: _selection,
-                )
-              else
-                Placeholder(child: Text('Unsupported node type: ${node.type}'))
-          ],
+  Widget build(BuildContext context) => ValueListenableBuilder(
+        valueListenable: widget.controller,
+        builder: (context, value, _) => Scrollable(
+          viewportBuilder: (BuildContext context, ViewportOffset position) => _selectionGestureBuilder.build(
+            child: _FlutterRteWidget(
+              key: _globalKey,
+              offset: position,
+              onSelectionChanged: _handleSelectionChanged,
+              children: [
+                for (final node in value.children)
+                  if (_rendererFactoriesMap.containsKey(node.type))
+                    _rendererFactoriesMap[node.type]!.createNodeRenderer(
+                      node,
+                      selection: _selection,
+                    )
+                  else
+                    Placeholder(child: Text('Unsupported node type: ${node.type}'))
+              ],
+            ),
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 class _FlutterRteWidget extends MultiChildRenderObjectWidget {
@@ -89,6 +93,7 @@ class _FlutterRteWidget extends MultiChildRenderObjectWidget {
     required this.offset,
     required this.onSelectionChanged,
     required super.children,
+    super.key,
   });
 
   final ViewportOffset offset;
@@ -96,10 +101,10 @@ class _FlutterRteWidget extends MultiChildRenderObjectWidget {
 
   @override
   RenderObject createRenderObject(BuildContext context) =>
-      _FlutterRteRender(offset: offset, onSelectionChanged: onSelectionChanged);
+      FlutterRteRender(offset: offset, onSelectionChanged: onSelectionChanged);
 
   @override
-  void updateRenderObject(BuildContext context, _FlutterRteRender renderObject) {
+  void updateRenderObject(BuildContext context, FlutterRteRender renderObject) {
     renderObject
       ..offset = offset
       ..onSelectionChanged = onSelectionChanged;
@@ -108,11 +113,11 @@ class _FlutterRteWidget extends MultiChildRenderObjectWidget {
 
 class _FlutterRteParentData extends ContainerBoxParentData<RenderBox> {}
 
-class _FlutterRteRender extends RenderBox
+class FlutterRteRender extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, _FlutterRteParentData>,
         RenderBoxContainerDefaultsMixin<RenderBox, _FlutterRteParentData> {
-  _FlutterRteRender({
+  FlutterRteRender({
     required ViewportOffset offset,
     required ValueChanged<NodeSelection?> onSelectionChanged,
   })  : _offset = offset,
