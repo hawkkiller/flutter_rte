@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter_rte/flutter_rte.dart';
 import 'package:flutter_rte/src/utils/equality.dart';
 
@@ -30,6 +31,52 @@ class NodeSelection {
   /// Returns true if the achor comes before the focus.
   bool get isForward => comparePoints(anchor, focus) < 0;
 
+  TextSelection? getLocalTextSelectionForNode(RTENode node) {
+    final pathToRoot = node.getPathToRoot();
+
+    // Case 1: Either anchor or focus point is directly inside the node
+    if (anchor.isInsidePath(pathToRoot) || focus.isInsidePath(pathToRoot)) {
+      // Find the start and end points relative to the node
+      final start = isBackward ? focus : anchor;
+      final end = isBackward ? anchor : focus;
+
+      // Calculate the relative offsets within the node
+      int startOffset = start.isInsidePath(pathToRoot) ? start.offset : 0;
+      int endOffset = end.isInsidePath(pathToRoot) ? end.offset : node.length;
+
+      return TextSelection(
+        baseOffset: startOffset,
+        extentOffset: endOffset,
+        isDirectional: true,
+      );
+    }
+
+    // Case 2: Selection encompasses the node (starts before and ends after)
+    final nodeStart = NodePoint(path: pathToRoot, offset: 0);
+    final nodeEnd = NodePoint(path: pathToRoot, offset: node.length);
+
+    if (isForward) {
+      if (anchor.isBefore(nodeStart) && focus.isAfter(nodeEnd)) {
+        return TextSelection(
+          baseOffset: 0,
+          extentOffset: node.length,
+          isDirectional: true,
+        );
+      }
+    } else {
+      if (focus.isBefore(nodeStart) && anchor.isAfter(nodeEnd)) {
+        return TextSelection(
+          baseOffset: 0,
+          extentOffset: node.length,
+          isDirectional: true,
+        );
+      }
+    }
+
+    // No overlap
+    return null;
+  }
+
   /// Compares two [NodePoint]s.
   static int comparePoints(NodePoint a, NodePoint b) {
     // Compare paths first
@@ -50,6 +97,19 @@ class NodeSelection {
     // If paths are identical, compare offsets
     return a.offset.compareTo(b.offset);
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is NodeSelection && other.anchor == anchor && other.focus == focus;
+  }
+
+  @override
+  int get hashCode => Object.hash(anchor, focus);
+
+  @override
+  String toString() => 'NodeSelection(anchor: $anchor, focus: $focus)';
 }
 
 /// {@template node_point}
@@ -73,25 +133,30 @@ class NodePoint {
   bool isInsideNode(RTENode node) {
     final pathToNode = node.getPathToRoot();
 
-    // If the path is longer than the node's path, it can't be inside the node
-    if (pathToNode.length < path.length) {
-      return false;
-    }
+    return isInsidePath(pathToNode);
+  }
 
-    // Check if the first n elements of the path are the same
-    for (var i = 0; i < path.length; i++) {
-      if (path[i] != pathToNode[i]) {
-        return false;
-      }
+  /// Returns true if this point is inside the given path.
+  ///
+  /// For example, if [otherPath] is [0, 1] and this point is [0, 1, 2], this would return true.
+  /// If [otherPath] is [0, 1] and this point is [0, 2, 1], this would return false.
+  @pragma('vm:prefer-inline')
+  bool isInsidePath(List<int> otherPath) {
+    if (path.length < otherPath.length) return false;
+
+    for (var i = 0; i < otherPath.length; i++) {
+      if (path[i] != otherPath[i]) return false;
     }
 
     return true;
   }
 
+  /// Returns true if this point is before the given point.
   bool isBefore(NodePoint other) {
     return NodeSelection.comparePoints(this, other) < 0;
   }
 
+  /// Returns true if this point is after the given point.
   bool isAfter(NodePoint other) {
     return NodeSelection.comparePoints(this, other) > 0;
   }
@@ -105,4 +170,7 @@ class NodePoint {
 
   @override
   int get hashCode => Object.hashAll(path) ^ offset;
+
+  @override
+  String toString() => 'NodePoint(path: $path, offset: $offset)';
 }

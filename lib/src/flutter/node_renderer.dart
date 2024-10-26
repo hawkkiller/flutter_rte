@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_rte/flutter_rte.dart';
 
@@ -18,10 +19,11 @@ abstract interface class NodeRendererFactory<NodeType extends RTENode> {
 /// {@template node_renderer_widget}
 /// Widget that renders specific node.
 /// {@endtemplate}
-abstract class NodeRendererWidget<NodeType extends RTENode> extends LeafRenderObjectWidget {
+abstract class NodeRendererWidget<NodeType extends RTENode> extends MultiChildRenderObjectWidget {
   const NodeRendererWidget({
     required this.node,
     required this.selection,
+    super.children,
     super.key,
   });
 
@@ -38,7 +40,8 @@ abstract class NodeRendererWidget<NodeType extends RTENode> extends LeafRenderOb
 /// {@template node_render_object}
 /// Render object that renders specific node.
 /// {@endtemplate}
-abstract base class NodeRenderObject<NodeType extends RTENode> extends RenderBox {
+abstract base class NodeRenderObject<NodeType extends RTENode> extends RenderBox
+    with ContainerRenderObjectMixin<RenderBox, ContainerBoxParentData<NodeRenderObject>> {
   /// {@macro node_render_object}
   NodeRenderObject({
     required NodeType node,
@@ -61,4 +64,7 @@ abstract base class NodeRenderObject<NodeType extends RTENode> extends RenderBox
     _selection = value;
     markNeedsPaint();
   }
+
+  /// Returns the position for the given offset.
+  NodePoint? getNodePointForOffset(Offset offset);
 }

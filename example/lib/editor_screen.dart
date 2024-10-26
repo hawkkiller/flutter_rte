@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_rte/flutter_rte.dart';
 
 /// {@template editor_screen}
@@ -27,11 +26,13 @@ class _EditorScreenState extends State<EditorScreen> {
             (index) => RTETextNode(
               id: 'text$index',
               text: 'Text $index',
+              format: TextFormatRTE(
+                bold: index % 2 == 0,
+              ),
             ),
           ),
         ],
       ),
-      RTEParagraphNode(id: 'linebreak'),
       RTEParagraphNode(
         id: 'paragraph2',
         children: [
@@ -62,5 +63,40 @@ class _EditorScreenState extends State<EditorScreen> {
       controller: controller,
       rendererFactories: rendererFactories,
     );
+  }
+}
+
+class CustomTextPainter extends CustomPainter {
+  final textPainter = TextPainter(
+    text: TextSpan(
+      text: 'Hello, world!',
+      style: TextStyle(
+        color: Colors.black,
+        fontSize: 24,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  );
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    textPainter.layout();
+    textPainter.paint(canvas, Offset.zero);
+
+    textPainter
+        .getBoxesForSelection(
+      const TextSelection(baseOffset: 1, extentOffset: 3),
+    )
+        .forEach((box) {
+      canvas.drawRect(
+        box.toRect(),
+        Paint()..color = Colors.red.withOpacity(.3),
+      );
+    });
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }

@@ -1,4 +1,7 @@
+import 'package:collection/collection.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/src/gestures/hit_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_rte/flutter_rte.dart';
 
@@ -43,9 +46,15 @@ class _FlutterRteState extends State<FlutterRte> {
       };
 
   NodeSelection? _selection = const NodeSelection(
-    NodePoint(path: [1, 1], offset: 0),
-    NodePoint(path: [1, 18], offset: 3),
+    NodePoint(path: [1], offset: 0),
+    NodePoint(path: [1], offset: 10),
   );
+
+  void _handleSelectionChanged(NodeSelection? selection) {
+    setState(() {
+      _selection = selection;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +67,7 @@ class _FlutterRteState extends State<FlutterRte> {
       builder: (context, value, _) => Scrollable(
         viewportBuilder: (BuildContext context, ViewportOffset position) => _FlutterRteWidget(
           offset: position,
+          onSelectionChanged: _handleSelectionChanged,
           children: [
             for (final node in value.children)
               if (_rendererFactoriesMap.containsKey(node.type))
@@ -77,30 +87,36 @@ class _FlutterRteState extends State<FlutterRte> {
 class _FlutterRteWidget extends MultiChildRenderObjectWidget {
   const _FlutterRteWidget({
     required this.offset,
+    required this.onSelectionChanged,
     required super.children,
   });
 
   final ViewportOffset offset;
+  final ValueChanged<NodeSelection?> onSelectionChanged;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => _FlutterRteRender(
-        offset: offset,
-      );
+  RenderObject createRenderObject(BuildContext context) =>
+      _FlutterRteRender(offset: offset, onSelectionChanged: onSelectionChanged);
 
   @override
   void updateRenderObject(BuildContext context, _FlutterRteRender renderObject) {
-    renderObject.offset = offset;
+    renderObject
+      ..offset = offset
+      ..onSelectionChanged = onSelectionChanged;
   }
 }
 
 class _FlutterRteParentData extends ContainerBoxParentData<RenderBox> {}
 
-class _FlutterRteRender extends RenderBox with ContainerRenderObjectMixin<RenderBox, _FlutterRteParentData> {
+class _FlutterRteRender extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _FlutterRteParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _FlutterRteParentData> {
   _FlutterRteRender({
     required ViewportOffset offset,
-  }) : _offset = offset {
-    _offset.addListener(markNeedsPaint);
-  }
+    required ValueChanged<NodeSelection?> onSelectionChanged,
+  })  : _offset = offset,
+        _onSelectionChanged = onSelectionChanged;
 
   /// The offset at which the text should be painted.
   ///
@@ -123,8 +139,137 @@ class _FlutterRteRender extends RenderBox with ContainerRenderObjectMixin<Render
     markNeedsLayout();
   }
 
+  ValueChanged<NodeSelection?> get onSelectionChanged => _onSelectionChanged;
+  ValueChanged<NodeSelection?> _onSelectionChanged;
+  set onSelectionChanged(ValueChanged<NodeSelection?> value) {
+    if (_onSelectionChanged == value) {
+      return;
+    }
+    _onSelectionChanged = value;
+  }
+
   /// The offset at which the contents should be painted.
   Offset get _paintOffset => Offset(0.0, -offset.pixels);
+
+  @override
+  void attach(covariant PipelineOwner owner) {
+    super.attach(owner);
+    _offset.addListener(markNeedsPaint);
+
+    _tap = TapGestureRecognizer(debugOwner: this)
+      ..onTapDown = _handleTapDown
+      ..onTap = _handleTap;
+    _longPress = LongPressGestureRecognizer(debugOwner: this)..onLongPress = _handleLongPress;
+  }
+
+  @override
+  void detach() {
+    _offset.removeListener(markNeedsPaint);
+
+    _tap.dispose();
+    _longPress.dispose();
+
+    super.detach();
+  }
+
+  void _handleTapDown(TapDownDetails details) {
+    _lastTapDownPosition = details.globalPosition;
+  }
+
+  void _handleTap() {
+    selectPosition(cause: SelectionChangedCause.tap);
+  }
+
+  void _handleLongPress() {
+    selectPosition(cause: SelectionChangedCause.longPress);
+  }
+
+  /// Move selection to the location of the last tap down.
+  ///
+  /// {@template flutter.rendering.RenderEditable.selectPosition}
+  /// This method is mainly used to translate user inputs in global positions
+  /// into a [TextSelection]. When used in conjunction with a [EditableText],
+  /// the selection change is fed back into [TextEditingController.selection].
+  ///
+  /// If you have a [TextEditingController], it's generally easier to
+  /// programmatically manipulate its `value` or `selection` directly.
+  /// {@endtemplate}
+  void selectPosition({required SelectionChangedCause cause}) {
+    selectPositionAt(from: _lastTapDownPosition!, cause: cause);
+  }
+
+  /// Select text between the global positions [from] and [to].
+  ///
+  /// [from] corresponds to the [TextSelection.baseOffset], and [to] corresponds
+  /// to the [TextSelection.extentOffset].
+  void selectPositionAt({required Offset from, Offset? to, required SelectionChangedCause cause}) {
+    // Need to convert the global position to a local position.
+    // Then find render object on that position and calculate [NodeSelection].
+
+    final nodeRenderObjectFrom = findNodeRenderObjectAt(from);
+
+    if (nodeRenderObjectFrom == null) {
+      return;
+    }
+
+    final nodePointFrom = nodeRenderObjectFrom.getNodePointForOffset(
+      from - _paintOffset - (nodeRenderObjectFrom.parentData as _FlutterRteParentData).offset,
+    );
+
+    if (nodePointFrom == null) {
+      return;
+    }
+
+    final nodeRenderObjectTo = to != null ? findNodeRenderObjectAt(to) : null;
+
+    if (nodeRenderObjectTo != null) {
+      final nodePointTo = nodeRenderObjectTo.getNodePointForOffset(
+        to! - _paintOffset - (nodeRenderObjectTo.parentData as _FlutterRteParentData).offset,
+      );
+
+      if (nodePointTo != null) {
+        onSelectionChanged(NodeSelection(nodePointFrom, nodePointTo));
+      }
+    } else {
+      onSelectionChanged(NodeSelection.collapsed(nodePointFrom));
+    }
+  }
+
+  NodeRenderObject? findNodeRenderObjectAt(Offset position) {
+    final hitTestResult = BoxHitTestResult();
+
+    hitTest(hitTestResult, position: position);
+
+    // find first render object with type NodeRenderObject
+    return hitTestResult.path.firstWhereOrNull((entry) => entry.target is NodeRenderObject)?.target
+        as NodeRenderObject?;
+  }
+
+  Offset? _lastTapDownPosition;
+  late TapGestureRecognizer _tap;
+  late LongPressGestureRecognizer _longPress;
+
+  @override
+  bool hitTestSelf(Offset position) => true;
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position - _paintOffset);
+
+  @override
+  void handleEvent(
+    PointerEvent event,
+    covariant HitTestEntry<HitTestTarget> entry,
+  ) {
+    assert(debugHandleEvent(event, entry));
+    if (event is PointerDownEvent) {
+      assert(!debugNeedsLayout);
+
+      // Propagates the pointer event to selection handlers.
+      _tap.addPointer(event);
+      _longPress.addPointer(event);
+    }
+  }
 
   @override
   void setupParentData(covariant RenderObject child) {

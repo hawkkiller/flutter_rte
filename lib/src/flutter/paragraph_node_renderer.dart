@@ -68,6 +68,16 @@ final class ParagraphNodeRenderObject extends NodeRenderObject<RTEParagraphNode>
   final _textPainter = TextPainter(textDirection: TextDirection.ltr);
 
   @override
+  NodePoint? getNodePointForOffset(Offset offset) {
+    final textPosition = _textPainter.getPositionForOffset(offset);
+
+    return NodePoint(
+      path: node.getPathToRoot(),
+      offset: textPosition.offset,
+    );
+  }
+
+  @override
   void performLayout() {
     final textNodes = node.children;
 
@@ -88,6 +98,7 @@ final class ParagraphNodeRenderObject extends NodeRenderObject<RTEParagraphNode>
       minWidth: 0,
       maxWidth: constraints.maxWidth,
     );
+
     size = _textPainter.size;
   }
 
@@ -98,13 +109,39 @@ final class ParagraphNodeRenderObject extends NodeRenderObject<RTEParagraphNode>
 
     // If selection is not null, paint the selection
     if (selection case NodeSelection selection) {
-      _paintSelection(selection);
+      _paintSelection(
+        context: context,
+        selection: selection,
+        offset: offset,
+      );
     }
   }
 
-  void _paintSelection(NodeSelection selection) {
-    final anchor = selection.anchor;
-    final focus = selection.focus;
+  @override
+  bool hitTestSelf(Offset position) => true;
+
+  void _paintSelection({
+    required PaintingContext context,
+    required NodeSelection selection,
+    required Offset offset,
+  }) {
+    final localTextSelection = selection.getLocalTextSelectionForNode(node);
+    if (localTextSelection == null) return;
+
+    // Get all the text boxes that overlap with the selection
+    final selectionPoints = _textPainter.getBoxesForSelection(localTextSelection);
+
+    // Create a paint object for the selection highlight
+    final paint = Paint()
+      ..color = const Color(0xFF2196F3).withOpacity(0.4) // Light blue selection color
+      ..style = PaintingStyle.fill;
+
+    for (final box in selectionPoints) {
+      context.canvas.drawRect(
+        box.toRect().shift(offset),
+        paint,
+      );
+    }
   }
 }
 
