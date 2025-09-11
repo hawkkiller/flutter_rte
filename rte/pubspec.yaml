@@ -1,0 +1,8 @@
+name: rte
+description: Rich Text Editor core
+version: 0.0.1
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+  flutter: ">=3.32.0 <4.0.0"
