@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 
-class DocPosition {
-  const DocPosition(this.path, this.offset);
+class DocumentPosition {
+  const DocumentPosition(this.path, this.offset);
 
   final List<int> path;
   final int offset;
@@ -10,12 +10,12 @@ class DocPosition {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is DocPosition && other.path == path && other.offset == offset;
+    return other is DocumentPosition && other.path == path && other.offset == offset;
   }
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(path) ^ offset.hashCode;
 
   @override
-  String toString() => 'DocPosition(path: $path, offset: $offset)';
+  String toString() => 'DocumentPosition(path: $path, offset: $offset)';
 }

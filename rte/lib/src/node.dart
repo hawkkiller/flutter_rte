@@ -1,9 +1,12 @@
 import 'package:uuid/uuid.dart';
 
 abstract class DocumentNode {
-  DocumentNode({String? key}) : key = key ?? const Uuid().v4();
+  DocumentNode({String? key, this.attributes = const {}}) : key = key ?? const Uuid().v4();
 
   final String key;
+  final Map<String, Object?> attributes;
+
+  DocumentNode copyWith({Map<String, Object?>? attributes});
 }
 
 abstract class ElementNode extends DocumentNode {
@@ -11,14 +14,15 @@ abstract class ElementNode extends DocumentNode {
 
   final List<DocumentNode> children;
 
-  ElementNode copyWith({List<DocumentNode>? children});
+  @override
+  ElementNode copyWith({List<DocumentNode>? children, Map<String, Object?>? attributes});
 }
 
 class RootNode extends ElementNode {
   RootNode({required super.children, super.key});
 
   @override
-  RootNode copyWith({List<DocumentNode>? children}) {
+  RootNode copyWith({List<DocumentNode>? children, Map<String, Object?>? attributes}) {
     return RootNode(children: children ?? this.children, key: key);
   }
 }
@@ -29,7 +33,8 @@ class TextNode extends DocumentNode {
   final String text;
   final List<TextMark> marks;
 
-  TextNode copyWith({String? text, List<TextMark>? marks}) {
+  @override
+  TextNode copyWith({String? text, List<TextMark>? marks, Map<String, Object?>? attributes}) {
     return TextNode(text: text ?? this.text, marks: marks ?? this.marks, key: key);
   }
 }
