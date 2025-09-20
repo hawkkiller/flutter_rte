@@ -1,4 +1,4 @@
-import 'package:rte/src/document_position.dart';
+import 'package:rte_core/src/document_position.dart';
 
 class DocumentRange {
   const DocumentRange(this.start, this.end);

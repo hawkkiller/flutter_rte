@@ -7,4 +7,4 @@ dev_dependencies:
   sizzle_lints: ^2.1.7
 
 workspace:
-  - rte
+  - rte_core
