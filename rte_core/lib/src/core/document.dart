@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
-import 'package:rte_core/src/document_range.dart';
-import 'package:rte_core/src/node.dart';
+import 'package:rte_core/src/core/document_range.dart';
+import 'package:rte_core/src/core/node.dart';
 
 class Document {
   const Document({

@@ -1,9 +1,9 @@
 import 'dart:collection';
 
-import 'package:rte_core/src/document.dart';
-import 'package:rte_core/src/document_operation.dart';
-import 'package:rte_core/src/document_operation_reaction.dart';
-import 'package:rte_core/src/document_range.dart';
+import 'package:rte_core/src/core/document.dart';
+import 'package:rte_core/src/core/document_operation.dart';
+import 'package:rte_core/src/core/document_operation_reaction.dart';
+import 'package:rte_core/src/core/document_range.dart';
 
 /// Result of applying a [DocumentTransaction].
 class TransactionResult {
@@ -13,8 +13,13 @@ class TransactionResult {
     this.selection,
   });
 
+  /// The resulting document after applying the transaction.
   final Document document;
+
+  /// The operations that were applied.
   final List<DocumentOperation> appliedOperations;
+
+  /// The selection after applying the transaction.
   final DocumentRange? selection;
 }
 
@@ -22,6 +27,11 @@ class TransactionResult {
 ///
 /// A transaction applies its operations in order to a base document.
 /// Reactions are run after each operation and may enqueue additional operations.
+/// 
+/// [base] is the document to which the transaction is applied.
+/// [operations] is the list of operations to apply.
+/// [reactions] is the list of reactions to run after each operation.
+/// [explicitSelection] is an optional selection to set after applying the transaction.
 class DocumentTransaction {
   DocumentTransaction({
     required this.base,
@@ -30,11 +40,18 @@ class DocumentTransaction {
     this.explicitSelection,
   }) : _operations = List.of(operations ?? const []);
 
+  /// The base document to which the transaction is applied.
   final Document base;
+
+  /// Reactions to run after each operation.
   final List<DocumentOperationReaction> reactions;
+
+  /// An explicit selection to set after applying the transaction.
   final DocumentRange? explicitSelection;
+
   final List<DocumentOperation> _operations;
 
+  /// The operations in this transaction.
   List<DocumentOperation> get operations => UnmodifiableListView(_operations);
 
   /// Applies the transaction, returning the resulting document and selection.

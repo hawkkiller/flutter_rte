@@ -1,5 +1,5 @@
-import 'package:rte_core/src/document.dart';
-import 'package:rte_core/src/document_operation.dart';
+import 'package:rte_core/src/core/document.dart';
+import 'package:rte_core/src/core/document_operation.dart';
 
 /// A reaction to a [DocumentOperation] that can produce additional operations
 /// to be applied in response.

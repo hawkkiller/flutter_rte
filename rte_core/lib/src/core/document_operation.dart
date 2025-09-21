@@ -1,4 +1,4 @@
-import 'package:rte_core/src/document.dart';
+import 'package:rte_core/src/core/document.dart';
 
 /// A base class for any action that can be performed on a document.
 ///
