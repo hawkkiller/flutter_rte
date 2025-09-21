@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+
 abstract class DocumentNode {
   const DocumentNode({
     required this.id,
@@ -68,6 +70,22 @@ class ParagraphNode extends BlockNode {
       children: children ?? this.children,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is ParagraphNode &&
+        other.id == id &&
+        const DeepCollectionEquality().equals(other.attributes, attributes) &&
+        const DeepCollectionEquality().equals(other.children, children);
+  }
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      const DeepCollectionEquality().hash(attributes) ^
+      const DeepCollectionEquality().hash(children);
 }
 
 class TextNode extends InlineNode {
@@ -94,4 +112,17 @@ class TextNode extends InlineNode {
       text: text ?? this.text,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is TextNode &&
+        other.id == id &&
+        const DeepCollectionEquality().equals(other.attributes, attributes) &&
+        other.text == text;
+  }
+
+  @override
+  int get hashCode => id.hashCode ^ const DeepCollectionEquality().hash(attributes) ^ text.hashCode;
 }
